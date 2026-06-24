@@ -19,6 +19,9 @@ add_library(${HTP_LIB} SHARED
     htp_iface_skel.c
     worker-pool.c
     hex-dma.c
+    hmx-queue.c
+    flash-attn-ops.c
+    hmx-flash-attn-ops.c
     matmul-ops.c
     binary-ops.c
     unary-ops.c
@@ -26,17 +29,29 @@ add_library(${HTP_LIB} SHARED
     softmax-ops.c
     act-ops.c
     rope-ops.c
-    flash-attn-ops.c
     set-rows-ops.c
     get-rows-ops.c
     cpy-ops.c
+    repeat-ops.c
     argsort-ops.c
+    ssm-conv.c
+    cumsum-ops.c
+    fill-ops.c
+    concat-ops.c
+    diag-ops.c
+    solve-tri-ops.c
+    gated-delta-net-ops.c
+    pad-ops.c
 )
 
 target_compile_definitions(${HTP_LIB} PRIVATE
     $<IF:$<BOOL:${HEXAGON_HTP_DEBUG}>,HTP_DEBUG=1,NDEBUG=1>
-    $<IF:$<BOOL:${HEXAGON_HTP_DEBUG}>,FARF_HIGH=1,>
-    FP32_QUANTIZE_GROUP_SIZE=${GGML_HEXAGON_FP32_QUANTIZE_GROUP_SIZE})
+    $<IF:$<BOOL:${HEXAGON_HTP_DEBUG}>,FARF_HIGH=1,>)
+
+if (GGML_HEXAGON_FA_EXP2_HF)
+    message(STATUS "ggml-htp: HMX_FA_USE_EXP2_HF=1 (use FP16 exp2 polynomial in FA softmax)")
+    target_compile_definitions(${HTP_LIB} PRIVATE HMX_FA_USE_EXP2_HF=1)
+endif()
 
 build_idl(htp_iface.idl ${HTP_LIB})
 
