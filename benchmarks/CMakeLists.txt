@@ -26,3 +26,8 @@ add_executable(bench-tokenizer bench-tokenizer.cpp)
 target_link_libraries(bench-tokenizer PRIVATE llama benchmark::benchmark)
 target_compile_definitions(bench-tokenizer PRIVATE
     VOCAB_PATH="${CMAKE_SOURCE_DIR}/models/ggml-vocab-qwen35.gguf")
+
+# ggml quantization kernels (from_float / to_float / vec_dot). Model-free and
+# fully deterministic, so it only needs to link against ggml.
+add_executable(bench-quantize bench-quantize.cpp)
+target_link_libraries(bench-quantize PRIVATE ggml benchmark::benchmark)
