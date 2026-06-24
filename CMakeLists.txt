@@ -109,6 +109,7 @@ option(LLAMA_BUILD_TOOLS     "llama: build tools"                               
 option(LLAMA_BUILD_EXAMPLES  "llama: build examples"                                                             ${LLAMA_STANDALONE})
 option(LLAMA_BUILD_SERVER    "llama: build server example"                                                       ${LLAMA_STANDALONE})
 option(LLAMA_BUILD_APP       "llama: build the unified binary"                                                   ${LLAMA_STANDALONE})
+option(LLAMA_BUILD_BENCHMARKS "llama: build CodSpeed benchmarks"                                                 OFF)
 option(LLAMA_BUILD_UI        "llama: build the embedded Web UI for server"                                       ON)
 option(LLAMA_USE_PREBUILT_UI "llama: use prebuilt UI from HF Bucket when available (requires LLAMA_BUILD_UI=ON)" ON)
 
@@ -207,6 +208,10 @@ endif()
 if (LLAMA_BUILD_COMMON AND LLAMA_BUILD_TESTS AND NOT CMAKE_JS_VERSION)
     include(CTest)
     add_subdirectory(tests)
+endif()
+
+if (LLAMA_BUILD_BENCHMARKS)
+    add_subdirectory(benchmarks)
 endif()
 
 if (LLAMA_BUILD_COMMON AND LLAMA_BUILD_EXAMPLES)
