@@ -8,6 +8,12 @@ set(BENCHMARK_ENABLE_TESTING     OFF CACHE BOOL "" FORCE)
 set(BENCHMARK_ENABLE_INSTALL     OFF CACHE BOOL "" FORCE)
 set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE BOOL "" FORCE)
 
+# Build the benchmark/codspeed stack statically (directory scope only, so it
+# does not affect llama/ggml). With BUILD_SHARED_LIBS=ON the codspeed runtime
+# symbol g_hooks ends up hidden inside libcodspeed.so and fails to link into the
+# benchmark; static linking bakes it in, matching the upstream codspeed example.
+set(BUILD_SHARED_LIBS OFF)
+
 FetchContent_Declare(
     google_benchmark
     GIT_REPOSITORY https://github.com/CodSpeedHQ/codspeed-cpp
