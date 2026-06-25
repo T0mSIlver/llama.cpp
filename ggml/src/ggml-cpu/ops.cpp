@@ -10720,9 +10720,7 @@ static void ggml_compute_forward_gated_delta_net_one_chunk(
 
             if (kda) {
                 // precompute exp(g) into delta scratch (reused below)
-                for (int64_t i = 0; i < S_v; ++i) {
-                    delta[i] = expf(g_d[i]);
-                }
+                ggml_vec_exp_f32(S_v, delta, g_d);
                 // S[i][:] *= exp(g[i]) => for each row j of M: M[j][i] *= exp(g[i])
                 for (int64_t j = 0; j < S_v; ++j) {
                     ggml_vec_mul_f32(S_v, &s_out[j * S_v], &s_out[j * S_v], delta);
