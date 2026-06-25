@@ -44,3 +44,36 @@ jobs:
         with:
           mode: simulation
           run: ./build/bin/bench-tokenizer
+
+  gated-delta-net:
+    name: gated-delta-net (qwen3-next)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake build-essential
+
+      - name: Configure (CodSpeed simulation)
+        run: >
+          cmake -B build
+          -DCMAKE_BUILD_TYPE=Release
+          -DLLAMA_BUILD_BENCHMARKS=ON
+          -DLLAMA_BUILD_COMMON=OFF
+          -DLLAMA_BUILD_TESTS=OFF
+          -DLLAMA_BUILD_EXAMPLES=OFF
+          -DLLAMA_BUILD_TOOLS=OFF
+          -DLLAMA_BUILD_SERVER=OFF
+          -DLLAMA_BUILD_APP=OFF
+          -DCODSPEED_MODE=simulation
+
+      - name: Build benchmark
+        run: cmake --build build --target bench-gated-delta-net -j $(nproc)
+
+      - name: Run benchmarks
+        uses: CodSpeedHQ/action@v4
+        with:
+          mode: simulation
+          run: ./build/bin/bench-gated-delta-net
