@@ -26,3 +26,8 @@ add_executable(bench-tokenizer bench-tokenizer.cpp)
 target_link_libraries(bench-tokenizer PRIVATE llama benchmark::benchmark)
 target_compile_definitions(bench-tokenizer PRIVATE
     VOCAB_PATH="${CMAKE_SOURCE_DIR}/models/ggml-vocab-qwen35.gguf")
+
+# Gated DeltaNet CPU kernel (Qwen3-Next / Qwen3.5). Links ggml only - no model needed,
+# inputs are synthetic tensors built directly on the CPU backend.
+add_executable(bench-gated-delta-net bench-gated-delta-net.cpp)
+target_link_libraries(bench-gated-delta-net PRIVATE ggml benchmark::benchmark)
