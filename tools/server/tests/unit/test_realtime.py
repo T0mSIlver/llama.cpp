@@ -97,12 +97,9 @@ def test_realtime_commit_completes_after_drain(pcm):
 def test_realtime_append_odd_byte_counts(pcm):
     # chunks that split a sample in two must not shift the samples that follow
     server.start()
-    chunks = []
-    i = 0
-    while i < len(pcm):
-        n = 2561 if len(chunks) % 2 == 0 else 2559
-        chunks.append({"type": "input_audio_buffer.append", "audio": base64.b64encode(pcm[i:i + n]).decode()})
-        i += n
+    # a 1-byte first chunk: if the byte were dropped, every later sample would be read one byte off
+    bounds = [0, 1] + list(range(3201, len(pcm), 3200)) + [len(pcm)]
+    chunks = [{"type": "input_audio_buffer.append", "audio": base64.b64encode(pcm[a:b]).decode()} for a, b in zip(bounds, bounds[1:])]
     events = asyncio.run(run_session(chunks + [{"type": "input_audio_buffer.commit", "final": True}], pcm))
     completed = [e for e in events if e["type"] == "conversation.item.input_audio_transcription.completed"]
     assert len(completed) == 1
