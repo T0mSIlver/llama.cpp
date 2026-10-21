@@ -399,6 +399,7 @@ struct server_slot {
     // realtime transcription, see SERVER_TASK_TYPE_TRANSCRIBE_RT
     mtmd::audio_stream_ptr audio_stream;
     bool audio_wait = false; // the stream needs more audio before it can produce rows
+    std::vector<int64_t> audio_commits; // per pending commit, the row at which its flushed audio is drained
 
     server_slot_stats stats;
 
@@ -456,6 +457,7 @@ struct server_slot {
 
         audio_stream.reset();
         audio_wait = false;
+        audio_commits.clear();
         inp_embd.clear();
     }
 
@@ -2131,6 +2133,15 @@ private:
             }
         }
 
+        // a commit is complete once the rows of its flushed audio are decoded, the text after it is the next item's
+        if (slot.audio_stream) {
+            const int64_t n_rows = mtmd_audio_stream_get_n_rows(slot.audio_stream.get());
+            while (!slot.audio_commits.empty() && n_rows >= slot.audio_commits.front()) {
+                slot.audio_commits.erase(slot.audio_commits.begin());
+                send_audio_committed(slot);
+            }
+        }
+
         if (incomplete) {
             slot.has_next_token = true;
         }
@@ -2335,6 +2346,19 @@ private:
         if (slot.stop != STOP_TYPE_NONE || slot.task->params.timings_per_token) {
             res->stats = slot.stats;
         }
+
+        queue_results.send(std::move(res));
+    }
+
+    void send_audio_committed(server_slot & slot) {
+        auto res = std::make_unique<server_task_result_cmpl_partial>();
+
+        res->id                 = slot.task->id;
+        res->index              = slot.task->index;
+        res->is_audio_committed = true;
+        res->res_type           = slot.task->params.res_type;
+        res->oaicompat_model    = slot.task->params.oaicompat_model;
+        res->oaicompat_cmpl_id  = slot.task->params.oaicompat_cmpl_id;
 
         queue_results.send(std::move(res));
     }
@@ -3071,7 +3095,10 @@ private:
                             if (task.params.control_action == SERVER_CONTROL_ACTION_AUDIO_APPEND) {
                                 mtmd_audio_stream_push(stream, task.params.control_audio.data(), task.params.control_audio.size());
                             } else {
-                                mtmd_audio_stream_flush(stream, task.params.control_action == SERVER_CONTROL_ACTION_AUDIO_END);
+                                const bool end = task.params.control_action == SERVER_CONTROL_ACTION_AUDIO_END;
+                                if (mtmd_audio_stream_flush(stream, end) == 0 && !end) {
+                                    slot->audio_commits.push_back(mtmd_audio_stream_get_n_rows_pushed(stream));
+                                }
                             }
                             slot->audio_wait = false;
                             res->success = true;
@@ -6039,17 +6066,18 @@ void server_routes::init_routes() {
         }
         send_event(json {{"type", "session.created"}, {"session", session_config}});
 
-        // one item per committed audio buffer, deltas are attributed to the current item
+        // one item per committed audio buffer
+        // items.front() gets the deltas until its commit drains, items.back() is the item new audio goes to
         std::mutex  mutex_item;
-        std::string item_id = "item_" + random_string();
-        std::string item_prev; // the committed item before item_id, empty for the first one
+        std::deque<std::string> items = {"item_" + random_string()};
+        std::string item_prev; // the last committed item, empty before the first commit
         std::string item_text;
 
         // called with mutex_item held
         auto send_completed = [&]() {
             send_event(json {
                 {"type",          "conversation.item.input_audio_transcription.completed"},
-                {"item_id",       item_id},
+                {"item_id",       items.front()},
                 {"content_index", 0},
                 {"transcript",    item_text},
             });
@@ -6108,19 +6136,20 @@ void server_routes::init_routes() {
                         post_control(SERVER_CONTROL_ACTION_AUDIO_END, {});
                         continue;
                     }
+                    // hold the lock until the next item opens: the slot may drain the commit as soon as the control is
+                    // processed, and the result loop must not complete the item before it is committed here
+                    std::lock_guard<std::mutex> lock(mutex_item);
                     if (!post_control(SERVER_CONTROL_ACTION_AUDIO_COMMIT, {})) {
                         break;
                     }
-                    // the current item is the committed one, its transcript completes it and the next item opens
-                    std::lock_guard<std::mutex> lock(mutex_item);
+                    // the committed item is completed by the result loop, once the words held back by the model's delay are out
                     send_event(json {
                         {"type",             "input_audio_buffer.committed"},
                         {"previous_item_id", item_prev.empty() ? json(nullptr) : json(item_prev)},
-                        {"item_id",          item_id},
+                        {"item_id",          items.back()},
                     });
-                    send_completed();
-                    item_prev = item_id;
-                    item_id   = "item_" + random_string();
+                    item_prev = items.back();
+                    items.push_back("item_" + random_string());
                 } else if (type == "input_audio_buffer.clear") {
                     send_event(json {{"type", "input_audio_buffer.cleared"}});
                 } else {
@@ -6144,12 +6173,18 @@ void server_routes::init_routes() {
                 break;
             }
             if (auto * partial = dynamic_cast<server_task_result_cmpl_partial *>(result.get())) {
-                if (!partial->content.text.empty()) {
+                if (partial->is_audio_committed) {
+                    std::lock_guard<std::mutex> lock(mutex_item);
+                    if (items.size() > 1) {
+                        send_completed();
+                        items.pop_front();
+                    }
+                } else if (!partial->content.text.empty()) {
                     std::lock_guard<std::mutex> lock(mutex_item);
                     item_text += partial->content.text;
                     send_event(json {
                         {"type",          "conversation.item.input_audio_transcription.delta"},
-                        {"item_id",       item_id},
+                        {"item_id",       items.front()},
                         {"content_index", 0},
                         {"delta",         partial->content.text},
                     });

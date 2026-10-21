@@ -1546,7 +1546,7 @@ Audio must be PCM16, mono, at the model sample rate. The sample rate is returned
 
 - `session.update`: accepted for compatibility, the server replies with `session.updated`
 - `input_audio_buffer.append`: `audio` holds base64 PCM16 samples
-- `input_audio_buffer.commit`: flushes the audio received so far, so the words still held back by the model's delay are produced. The server replies with `input_audio_buffer.committed` and starts a new item. With `"final": true`, the input ends instead and the last item is completed once the stream drains.
+- `input_audio_buffer.commit`: flushes the audio received so far, so the words still held back by the model's delay are produced. The server replies with `input_audio_buffer.committed`, and the audio sent after the commit goes to a new item. The committed item is completed once the flushed audio is transcribed. With `"final": true`, the input ends instead and the last item is completed once the stream drains.
 - `input_audio_buffer.clear`: accepted for compatibility, audio already sent cannot be discarded
 
 Closing the websocket also ends the input.
@@ -1558,8 +1558,6 @@ Closing the websocket also ends the input.
 - `conversation.item.input_audio_transcription.completed`: `transcript` holds the full text of `item_id`
 - `input_audio_buffer.committed`: `item_id` of the committed item, `previous_item_id` of the item committed before it (`null` for the first one)
 - `error`: `error.message` describes the problem
-
-Note that words held back by the model's delay at the time of a commit are attributed to the next item.
 
 ### POST `/v1/responses`: OpenAI-compatible Responses API
 
