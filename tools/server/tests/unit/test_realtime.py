@@ -32,6 +32,7 @@ def create_server():
     server.model_hf_file = None
     server.n_ctx = 2048
     server.n_slots = 1
+    server.temperature = 0.0  # greedy, the asserts check words
 
 
 @pytest.fixture(scope="module")
