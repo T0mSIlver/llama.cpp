@@ -6101,6 +6101,7 @@ void server_routes::init_routes() {
         std::atomic<bool> input_ended{false};
         std::thread reader([&]() {
             std::string msg;
+            std::string pcm_odd; // the byte of a sample split across two appends
             while (conn.read(msg) != 0) {
                 json ev;
                 try {
@@ -6120,6 +6121,9 @@ void server_routes::init_routes() {
                         send_error_event("invalid base64 audio", "invalid_request_error");
                         continue;
                     }
+                    // a chunk may end mid-sample, the byte left over starts the next chunk
+                    pcm.insert(0, pcm_odd);
+                    pcm_odd = pcm.size() % 2 ? pcm.substr(pcm.size() - 1) : std::string();
                     std::vector<float> samples(pcm.size() / 2);
                     for (size_t i = 0; i < samples.size(); i++) {
                         int16_t v;

@@ -92,3 +92,18 @@ def test_realtime_commit_completes_after_drain(pcm):
     assert completed[0]["transcript"] == item_text(events, first)
     assert completed[0]["transcript"].lower().rstrip(" .").endswith("country")
     assert item_text(events, completed[1]["item_id"]).strip() == ""
+
+
+def test_realtime_append_odd_byte_counts(pcm):
+    # chunks that split a sample in two must not shift the samples that follow
+    server.start()
+    chunks = []
+    i = 0
+    while i < len(pcm):
+        n = 2561 if len(chunks) % 2 == 0 else 2559
+        chunks.append({"type": "input_audio_buffer.append", "audio": base64.b64encode(pcm[i:i + n]).decode()})
+        i += n
+    events = asyncio.run(run_session(chunks + [{"type": "input_audio_buffer.commit", "final": True}], pcm))
+    completed = [e for e in events if e["type"] == "conversation.item.input_audio_transcription.completed"]
+    assert len(completed) == 1
+    assert "country" in completed[0]["transcript"].lower()
