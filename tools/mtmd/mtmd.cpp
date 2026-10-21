@@ -3331,3 +3331,7 @@ int32_t mtmd_audio_stream_step(mtmd_audio_stream * s, llama_token last_token) {
 const float * mtmd_audio_stream_get_output_embd(const mtmd_audio_stream * s) {
     return s->out.data();
 }
+
+int64_t mtmd_audio_stream_get_n_rows_pushed(const mtmd_audio_stream * s) {
+    return s->n_samples / s->samples_per_tok;
+}

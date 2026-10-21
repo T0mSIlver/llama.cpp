@@ -412,6 +412,10 @@ MTMD_API int32_t mtmd_audio_stream_step(mtmd_audio_stream * stream, llama_token 
 // rows of the last step, the reading size (in bytes) is n_rows * llama_model_n_embd_inp(model) * sizeof(float)
 MTMD_API const float * mtmd_audio_stream_get_output_embd(const mtmd_audio_stream * stream);
 
+// number of rows the audio pushed so far will produce, padding included
+// right after a flush(), the flushed audio is fully produced once step() has returned this many rows in total
+MTMD_API int64_t mtmd_audio_stream_get_n_rows_pushed(const mtmd_audio_stream * stream);
+
 /////////////////////////////////////////
 // EXPERIMENTAL API for audio generation, subjected to breaking changes
 
