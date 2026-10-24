@@ -6043,6 +6043,10 @@ void server_routes::init_routes() {
             server_task task(SERVER_TASK_TYPE_TRANSCRIBE_RT);
             task.id = rd.get_new_id();
             task.params.sampling          = params.sampling;
+            // the client has no way to set sampling, and a transcript should not change between runs
+            if (!(params.sampling.user_sampling_config & common_params_sampling_config::COMMON_PARAMS_SAMPLING_CONFIG_TEMP)) {
+                task.params.sampling.temp = 0.0f;
+            }
             task.params.stream            = true;
             task.params.oaicompat_cmpl_id = session_id;
             task.params.oaicompat_model   = meta->model_name;
