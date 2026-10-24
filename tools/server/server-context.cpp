@@ -6044,8 +6044,11 @@ void server_routes::init_routes() {
             task.id = rd.get_new_id();
             task.params.sampling          = params.sampling;
             // the client has no way to set sampling, and a transcript should not change between runs
-            if (!(params.sampling.user_sampling_config & common_params_sampling_config::COMMON_PARAMS_SAMPLING_CONFIG_TEMP)) {
-                task.params.sampling.temp = 0.0f;
+            // common_sampler_init only picks greedy when temperature is the last sampler, at 0, with no dynatemp
+            const uint64_t sampling_set = COMMON_PARAMS_SAMPLING_CONFIG_TEMP | COMMON_PARAMS_SAMPLING_CONFIG_SAMPLERS | COMMON_PARAMS_SAMPLING_CONFIG_MIROSTAT;
+            if (!(params.sampling.user_sampling_config & sampling_set)) {
+                task.params.sampling.temp           = 0.0f;
+                task.params.sampling.dynatemp_range = 0.0f;
             }
             task.params.stream            = true;
             task.params.oaicompat_cmpl_id = session_id;
