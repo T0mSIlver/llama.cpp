@@ -6044,11 +6044,11 @@ void server_routes::init_routes() {
             task.id = rd.get_new_id();
             task.params.sampling          = params.sampling;
             // the client has no way to set sampling, and a transcript should not change between runs
-            // common_sampler_init only picks greedy when temperature is the last sampler, at 0, with no dynatemp
-            const uint64_t sampling_set = COMMON_PARAMS_SAMPLING_CONFIG_TEMP | COMMON_PARAMS_SAMPLING_CONFIG_SAMPLERS | COMMON_PARAMS_SAMPLING_CONFIG_MIROSTAT;
-            if (!(params.sampling.user_sampling_config & sampling_set)) {
-                task.params.sampling.temp           = 0.0f;
-                task.params.sampling.dynatemp_range = 0.0f;
+            if (!(params.sampling.user_sampling_config & COMMON_PARAMS_SAMPLING_CONFIG_TEMP)) {
+                // top-k 1 alone is greedy, whatever chain the command line or the GGUF metadata set
+                task.params.sampling.samplers = { COMMON_SAMPLER_TYPE_TOP_K };
+                task.params.sampling.top_k    = 1;
+                task.params.sampling.mirostat = 0;
             }
             task.params.stream            = true;
             task.params.oaicompat_cmpl_id = session_id;
