@@ -12,7 +12,7 @@ VOXTRAL_RT_HF_REPO = "ggml-org/Voxtral-Mini-4B-Realtime-2602-GGUF:Q4_K_M"
 
 # 16 kHz mono PCM16: "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country."
 AUDIO_URL = "https://github.com/ggml-org/whisper.cpp/raw/master/samples/jfk.wav"
-AUDIO_RE = r"^\W*(and so\W+)?my fellow americans\W.*\Wyour country\W*$"
+AUDIO_RE = r"^\W*(and so\W+)?my fellow americans\W+ask not what your country can do for you\W+ask what you can do for your country\W*$"
 
 EV_DELTA     = "conversation.item.input_audio_transcription.delta"
 EV_COMPLETED = "conversation.item.input_audio_transcription.completed"
