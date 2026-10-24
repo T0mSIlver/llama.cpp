@@ -81,6 +81,8 @@ def test_realtime_control_events():
     start_voxtral_rt()
     events = run_realtime([
         {"type": "session.update", "session": {}},
+        {"type": "session.update", "session": {"audio": {"input": {"format": {"type": "audio/pcm", "rate": 24000}}}}},
+        {"type": "session.update", "session": {"audio": {"input": {"format": {"type": "audio/pcm", "rate": 16000}}}}},
         {"type": "input_audio_buffer.clear"},
         {"type": "not.an.event"},
         {"type": "input_audio_buffer.commit", "final": True},
@@ -88,11 +90,14 @@ def test_realtime_control_events():
     assert [ev["type"] for ev in events if ev["type"] != EV_DELTA] == [
         "session.created",
         "session.updated",
+        "error",
+        "session.updated",
         "input_audio_buffer.cleared",
         "error",
         EV_COMPLETED,
     ]
     assert events[1]["session"] == events[0]["session"]
+    assert "must be 16000" in events[2]["error"]["message"]
 
 
 # ref: https://github.com/ggml-org/llama.cpp/issues/30968
