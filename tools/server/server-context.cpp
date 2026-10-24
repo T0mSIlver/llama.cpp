@@ -6045,8 +6045,16 @@ void server_routes::init_routes() {
             task.params.sampling          = params.sampling;
             // the client has no way to set sampling, and a transcript should not change between runs
             if (!(params.sampling.user_sampling_config & COMMON_PARAMS_SAMPLING_CONFIG_TEMP)) {
-                // top-k 1 alone is greedy, whatever chain the command line or the GGUF metadata set
-                task.params.sampling.samplers = { COMMON_SAMPLER_TYPE_TOP_K };
+                // keep the penalties, which only change logits, and end with top-k 1, which is greedy
+                // whatever else the command line or the GGUF metadata put in the chain
+                std::vector<common_sampler_type> samplers;
+                for (const auto type : params.sampling.samplers) {
+                    if (type == COMMON_SAMPLER_TYPE_PENALTIES || type == COMMON_SAMPLER_TYPE_DRY) {
+                        samplers.push_back(type);
+                    }
+                }
+                samplers.push_back(COMMON_SAMPLER_TYPE_TOP_K);
+                task.params.sampling.samplers = samplers;
                 task.params.sampling.top_k    = 1;
                 task.params.sampling.mirostat = 0;
             }
