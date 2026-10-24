@@ -6109,7 +6109,8 @@ void server_routes::init_routes() {
                     // audio sent at another rate would still be read at the model rate
                     const int32_t rate = mtmd_get_audio_sample_rate(ctx_server.mctx);
                     const json format = ev.value("session", json()).value("audio", json()).value("input", json()).value("format", json());
-                    if (json_value(format, "rate", rate) != rate) {
+                    // json_value() would turn a string or a fraction into the default
+                    if (format.contains("rate") && !(format.at("rate").is_number_integer() && format.at("rate").get<int64_t>() == rate)) {
                         send_error_event(string_format("audio.input.format.rate must be %d", rate), "invalid_request_error");
                         continue;
                     }
