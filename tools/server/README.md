@@ -1586,7 +1586,7 @@ Transcribes streamed audio, for models with a streaming audio encoder. Compatibl
 
 Audio must be PCM16, mono, at the model sample rate. The sample rate is returned in `session.created` as `audio.input.format.rate`. Each `input_audio_buffer.append` carries a base64-encoded chunk of PCM16 samples.
 
-Decoding is greedy unless the server is started with `--temp`, in which case its sampling settings are used.
+Decoding is greedy unless the server is started with `--temp` (or `LLAMA_ARG_TEMPERATURE`), in which case its sampling settings are used.
 
 *Client events:*
 
