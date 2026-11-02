@@ -855,7 +855,12 @@ struct realtime_conversation {
         std::thread reader([this]() {
             std::string msg;
             while (conn.read(msg) != 0) {
-                handle(msg);
+                // an exception leaving this thread would end the whole server
+                try {
+                    handle(msg);
+                } catch (const std::exception & e) {
+                    send_error(e.what(), "server_error");
+                }
             }
             closed = true;
             conn.close();
