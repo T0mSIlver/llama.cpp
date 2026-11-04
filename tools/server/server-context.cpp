@@ -6109,7 +6109,6 @@ void server_routes::init_routes() {
                     // the audio has no header, so audio sent at another rate would be read at the wrong speed
                     const int32_t rate = mtmd_get_audio_sample_rate(ctx_server.mctx);
                     const json format = ev.value("session", json()).value("audio", json()).value("input", json()).value("format", json());
-                    // a JSON comparison, so the string "24000" or 16000.5 does not match 16000 either
                     if (format.contains("rate") && format.at("rate") != rate) {
                         send_error_event(string_format("audio.input.format.rate must be %d", rate), "invalid_request_error");
                         continue;
