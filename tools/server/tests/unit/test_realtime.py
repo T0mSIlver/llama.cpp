@@ -83,6 +83,7 @@ def test_realtime_control_events():
         {"type": "session.update", "session": {}},
         {"type": "session.update", "session": {"audio": {"input": {"format": {"type": "audio/pcm", "rate": 24000}}}}},
         {"type": "session.update", "session": {"audio": {"input": {"format": {"type": "audio/pcm", "rate": "24000"}}}}},
+        {"type": "session.update", "session": {"audio": {"input": {"format": {"type": "audio/pcm", "rate": 16000.5}}}}},
         {"type": "session.update", "session": {"audio": {"input": {"format": {"type": "audio/pcm", "rate": 16000}}}}},
         {"type": "input_audio_buffer.clear"},
         {"type": "not.an.event"},
@@ -93,6 +94,7 @@ def test_realtime_control_events():
         "session.updated",
         "error",
         "error",
+        "error",
         "session.updated",
         "input_audio_buffer.cleared",
         "error",
@@ -101,6 +103,7 @@ def test_realtime_control_events():
     assert events[1]["session"] == events[0]["session"]
     assert "must be 16000" in events[2]["error"]["message"]
     assert "must be 16000" in events[3]["error"]["message"]
+    assert "must be 16000" in events[4]["error"]["message"]
 
 
 # ref: https://github.com/ggml-org/llama.cpp/issues/30968
