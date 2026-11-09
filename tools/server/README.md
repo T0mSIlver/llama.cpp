@@ -1615,7 +1615,7 @@ Closing the websocket also ends the input.
 - `input_audio_buffer.committed`: `item_id` of the committed item, `previous_item_id` of the item committed before it (`null` for the first one)
 - `error`: `error.message` describes the problem
 
-The `completed` event of a commit includes the words held back by the model's delay at the time of the commit.
+Note that words held back by the model's delay at the time of a commit are attributed to the next item.
 
 #### Realtime conversation
 
