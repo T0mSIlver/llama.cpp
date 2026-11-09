@@ -665,6 +665,36 @@ MAKE_TEST(test_audio_log_mel_blocks) {
     t.assert_true("max_diff = " + std::to_string(max_diff), max_diff < 1e-5f);
 }
 
+MAKE_TEST(test_helper_resampler_chunks) {
+    // the resampler keeps its state between calls: any chunking gives the same output as one call
+    const std::vector<std::pair<int32_t, int32_t>> rates = { {24000, 16000}, {8000, 16000}, {44100, 16000} };
+    std::vector<float> in(4800);
+    for (size_t i = 0; i < in.size(); i++) {
+        in[i] = (float) (0.5 * std::sin(0.01 * i));
+    }
+    for (const auto & [rate_in, rate_out] : rates) {
+        const std::string name = std::to_string(rate_in) + " -> " + std::to_string(rate_out);
+        mtmd_helper::resampler_ptr whole(mtmd_helper_resampler_init(rate_in, rate_out));
+        mtmd_helper::resampler_ptr parts(mtmd_helper_resampler_init(rate_in, rate_out));
+        if (!t.assert_true("init " + name, whole && parts)) {
+            continue;
+        }
+        size_t n_out = 0;
+        const float * out = mtmd_helper_resampler_process(whole.get(), in.data(), in.size(), &n_out);
+        const std::vector<float> expected(out, out + n_out);
+
+        std::vector<float> actual;
+        for (size_t i = 0, n = 1; i < in.size(); i += n, n = n % 97 + 1) {
+            out = mtmd_helper_resampler_process(parts.get(), in.data() + i, std::min(n, in.size() - i), &n_out);
+            actual.insert(actual.end(), out, out + n_out);
+        }
+        const double n_exact = (double) in.size() * rate_out / rate_in;
+        t.assert_true("length " + name, std::fabs(expected.size() - n_exact) <= 1.0);
+        t.assert_true("chunks " + name, actual == expected);
+    }
+    t.assert_true("invalid rate", mtmd_helper_resampler_init(0, 16000) == nullptr);
+}
+
 //
 // main
 //

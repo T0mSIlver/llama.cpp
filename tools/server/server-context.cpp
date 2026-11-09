@@ -6178,13 +6178,13 @@ void server_routes::init_routes() {
         }
 
         const std::string session_id = "sess_" + random_string();
-        server_realtime_audio_in audio_in(mtmd_get_audio_sample_rate(ctx_server.mctx));
+        server_realtime_audio_in input_audio(mtmd_get_audio_sample_rate(ctx_server.mctx));
         json session_config = json {
             {"id",     session_id},
             {"object", "realtime.transcription_session"},
             {"type",   "transcription"},
             {"audio",  {{"input", {
-                {"format",          {{"type", "audio/pcm"}, {"rate", audio_in.rate}}},
+                {"format",          {{"type", "audio/pcm"}, {"rate", input_audio.rate}}},
                 {"transcription",   {{"model", meta->model_name}}},
                 {"turn_detection",  nullptr},
                 {"noise_reduction", nullptr},
@@ -6261,11 +6261,11 @@ void server_routes::init_routes() {
                 const std::string type = json_value(ev, "type", std::string());
                 if (type == "session.update" || type == "transcription_session.update") {
                     std::string err;
-                    if (!audio_in.update(json_value(ev, "session", json::object()), err)) {
+                    if (!input_audio.update(json_value(ev, "session", json::object()), err)) {
                         send_error_event(err, "invalid_request_error");
                         continue;
                     }
-                    session_config["audio"]["input"]["format"]["rate"] = audio_in.rate;
+                    session_config["audio"]["input"]["format"]["rate"] = input_audio.rate;
                     send_event(json {{"type", "session.updated"}, {"session", session_config}});
                 } else if (type == "input_audio_buffer.append") {
                     std::string pcm;
@@ -6275,7 +6275,7 @@ void server_routes::init_routes() {
                         send_error_event("invalid base64 audio", "invalid_request_error");
                         continue;
                     }
-                    if (!post_control(SERVER_CONTROL_ACTION_AUDIO_APPEND, audio_in.decode(pcm))) {
+                    if (!post_control(SERVER_CONTROL_ACTION_AUDIO_APPEND, input_audio.decode(pcm))) {
                         break;
                     }
                 } else if (type == "input_audio_buffer.commit") {

@@ -2,6 +2,7 @@
 
 #include "../tools/server/server-common.h"
 #include "../tools/server/server-decision.h"
+#include "../tools/server/server-realtime.h"
 #include "../tools/server/server-schema.h"
 
 #include <algorithm>
@@ -248,6 +249,47 @@ static void test_json_helpers(testing & t) {
         t.assert_true("missing",  !res.contains("a/missing"));
         t.assert_true("not obj",  !res.contains("x/y"));
         t.assert_equal("count", (size_t) 3, res.size());
+    });
+}
+
+static void test_realtime_audio_in(testing & t) {
+    auto rate_update = [](int64_t rate) {
+        return json {{"audio", {{"input", {{"format", {{"type", "audio/pcm"}, {"rate", rate}}}}}}}};
+    };
+    const std::string pcm(2 * 2400, '\0'); // 2400 PCM16 samples
+
+    t.test("default rate", [&](testing & t) {
+        server_realtime_audio_in in(16000);
+        std::string err;
+        t.assert_equal("24 kHz", 24000, in.rate);
+        t.assert_true("no rate", in.update(json {{"instructions", "x"}}, err));
+        t.assert_equal("unchanged", 24000, in.rate);
+        t.assert_equal("resampled", (size_t) 1600, in.decode(pcm).size());
+    });
+
+    t.test("invalid rate", [&](testing & t) {
+        server_realtime_audio_in in(16000);
+        std::string err;
+        t.assert_true("too low",   !in.update(rate_update(7999), err));
+        t.assert_true("too high",  !in.update(rate_update(192001), err));
+        json str = rate_update(0);
+        str["audio"]["input"]["format"]["rate"] = "16000";
+        t.assert_true("string",    !in.update(str, err));
+        json real = rate_update(0);
+        real["audio"]["input"]["format"]["rate"] = 16000.5;
+        t.assert_true("not integer", !in.update(real, err));
+        t.assert_equal("unchanged", 24000, in.rate);
+    });
+
+    t.test("rate fixed after the first audio", [&](testing & t) {
+        server_realtime_audio_in in(16000);
+        std::string err;
+        t.assert_true("empty append", in.decode("").empty());
+        t.assert_true("set before audio", in.update(rate_update(16000), err));
+        t.assert_equal("model rate, no resampling", (size_t) 2400, in.decode(pcm).size());
+        t.assert_true("same rate", in.update(rate_update(16000), err));
+        t.assert_true("new rate", !in.update(rate_update(48000), err));
+        t.assert_equal("unchanged", 16000, in.rate);
     });
 }
 
@@ -682,6 +724,7 @@ int main(int argc, char ** argv) {
     t.test("sse",           test_sse);
     t.test("json_helpers",  test_json_helpers);
     t.test("lora_helpers",  test_lora_helpers);
+    t.test("realtime_audio_in", test_realtime_audio_in);
     t.test("server_pipe",   test_server_pipe);
     t.test("decision_escape", test_decision_escape);
     t.test("rerank_template", test_rerank_template);

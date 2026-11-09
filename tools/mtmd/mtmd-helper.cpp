@@ -388,7 +388,7 @@ void mtmd_helper_resampler_free(mtmd_helper_resampler * rs) {
 const float * mtmd_helper_resampler_process(mtmd_helper_resampler * rs, const float * in, size_t n_in, size_t * n_out) {
     ma_uint64 n_expected = 0;
     ma_resampler_get_expected_output_frame_count(&rs->rs, n_in, &n_expected);
-    rs->out.resize(n_expected + 16);
+    rs->out.resize(n_expected + 1);
     size_t n_read    = 0;
     size_t n_written = 0;
     while (n_read < n_in) {

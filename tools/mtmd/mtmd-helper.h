@@ -78,16 +78,6 @@ MTMD_API struct mtmd_helper_bitmap_wrapper mtmd_helper_bitmap_init_from_buf(
                     bool placeholder,
                     struct mtmd_helper_init_opt opt);
 
-// streaming resampler for mono PCM F32, returns nullptr on failure
-struct mtmd_helper_resampler;
-typedef struct mtmd_helper_resampler mtmd_helper_resampler;
-
-MTMD_API mtmd_helper_resampler * mtmd_helper_resampler_init(int32_t rate_in, int32_t rate_out);
-MTMD_API void                    mtmd_helper_resampler_free(mtmd_helper_resampler * rs);
-
-// the output is valid until the next call
-MTMD_API const float * mtmd_helper_resampler_process(mtmd_helper_resampler * rs, const float * in, size_t n_in, size_t * n_out);
-
 // helper to count the total number of tokens from a list of chunks, useful to keep track of KV cache
 MTMD_API size_t mtmd_helper_get_n_tokens(const mtmd_input_chunks * chunks);
 
@@ -321,6 +311,17 @@ MTMD_API int32_t mtmd_helper_gen_audio_get_output(
 // forces any buffered codes through code2wav now, regardless of window_frames;
 // call once when generation has ended, before the last get_output() in stream mode
 MTMD_API int32_t mtmd_helper_gen_audio_flush(mtmd_helper_gen_audio * ctx);
+
+// streaming resampler for mono PCM F32
+struct mtmd_helper_resampler;
+typedef struct mtmd_helper_resampler mtmd_helper_resampler;
+
+// returns nullptr on failure
+MTMD_API mtmd_helper_resampler * mtmd_helper_resampler_init(int32_t rate_in, int32_t rate_out);
+MTMD_API void                    mtmd_helper_resampler_free(mtmd_helper_resampler * rs);
+
+// the output is valid until the next call
+MTMD_API const float * mtmd_helper_resampler_process(mtmd_helper_resampler * rs, const float * in, size_t n_in, size_t * n_out);
 
 #ifdef __cplusplus
 } // extern "C"

@@ -133,7 +133,7 @@ struct realtime_conversation {
     mtmd_helper_gen_audio_out_mode out_mode          = MTMD_HELPER_GEN_AUDIO_OUT_AUTO;
     int32_t                        max_output_tokens = -1; // "inf"
     int                            output_rate       = 24000;
-    server_realtime_audio_in       audio_in{mtmd_get_audio_sample_rate(deps.mctx)};
+    server_realtime_audio_in       input_audio{mtmd_get_audio_sample_rate(deps.mctx)};
 
     // tools, in the system turn
     json                          tools_json  = json::array(); // as the client sent them
@@ -194,17 +194,17 @@ struct realtime_conversation {
     }
 
     json session_json() const {
-        json input = {{"format", {{"type", "audio/pcm"}, {"rate", audio_in.rate}}}, {"turn_detection", nullptr}};
+        json audio_in = {{"format", {{"type", "audio/pcm"}, {"rate", input_audio.rate}}}, {"turn_detection", nullptr}};
         if (type == "transcription") {
-            input["transcription"] = {{"model", deps.meta.model_name}, {"language", language.empty() ? json(nullptr) : json(language)}};
+            audio_in["transcription"] = {{"model", deps.meta.model_name}, {"language", language.empty() ? json(nullptr) : json(language)}};
             return {
                 {"id",     id},
                 {"object", "realtime.transcription_session"},
                 {"type",   "transcription"},
-                {"audio",  {{"input", input}}},
+                {"audio",  {{"input", audio_in}}},
             };
         }
-        json audio = {{"input", input}};
+        json audio = {{"input", audio_in}};
         if (deps.cap.audio_gen) {
             audio["output"] = {{"format", {{"type", "audio/pcm"}, {"rate", output_rate}}}};
         }
@@ -356,7 +356,7 @@ struct realtime_conversation {
             send_error("invalid base64 audio");
             return;
         }
-        std::vector<float> samples = audio_in.decode(pcm);
+        std::vector<float> samples = input_audio.decode(pcm);
         if (samples.empty() || !ensure_turn()) {
             return;
         }
@@ -616,7 +616,8 @@ struct realtime_conversation {
             send_error("session.update: max_output_tokens must be an integer or \"inf\"");
             return;
         }
-        if (std::string err; !audio_in.update(session, err)) {
+        std::string err;
+        if (!input_audio.update(session, err)) {
             send_error("session.update: " + err);
             return;
         }
@@ -897,18 +898,12 @@ struct realtime_conversation {
 
 } // namespace
 
-// the value of key in j, null if j is not an object or has no key
-static const json & json_field(const json & j, const char * key) {
-    static const json none;
-    return j.is_object() && j.contains(key) ? j.at(key) : none;
-}
-
 bool server_realtime_audio_in::update(const json & session, std::string & err) {
-    const json & format = json_field(json_field(json_field(session, "audio"), "input"), "format");
-    if (!format.is_object() || !format.contains("rate")) {
+    const json rates = json_get_nested_values({"audio/input/format/rate"}, session);
+    if (rates.empty()) {
         return true;
     }
-    const json & value = format.at("rate");
+    const json & value = rates.begin().value();
     const int64_t new_rate = value.is_number_integer() ? value.get<int64_t>() : 0;
     if (new_rate < 8000 || new_rate > 192000) {
         err = "audio.input.format.rate must be an integer between 8000 and 192000";
@@ -923,21 +918,22 @@ bool server_realtime_audio_in::update(const json & session, std::string & err) {
 }
 
 std::vector<float> server_realtime_audio_in::decode(const std::string & pcm) {
-    started = true;
     std::vector<float> samples(pcm.size() / 2);
     for (size_t i = 0; i < samples.size(); i++) {
         int16_t v;
         memcpy(&v, pcm.data() + 2 * i, sizeof(v));
         samples[i] = v / 32768.0f;
     }
-    if (rate == model_rate || samples.empty()) {
+    if (samples.empty()) {
+        return samples;
+    }
+    started = true;
+    if (rate == model_rate) {
         return samples;
     }
     if (!resampler) {
         resampler.reset(mtmd_helper_resampler_init(rate, model_rate));
-        if (!resampler) {
-            return {};
-        }
+        GGML_ASSERT(resampler);
     }
     size_t n_out = 0;
     const float * out = mtmd_helper_resampler_process(resampler.get(), samples.data(), samples.size(), &n_out);
