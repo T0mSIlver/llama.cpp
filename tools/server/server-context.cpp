@@ -6262,7 +6262,7 @@ void server_routes::init_routes() {
                 if (type == "session.update" || type == "transcription_session.update") {
                     std::string err;
                     if (!input_audio.update(json_value(ev, "session", json::object()), err)) {
-                        send_error_event(err, "invalid_request_error");
+                        send_error_event("session.update: " + err, "invalid_request_error");
                         continue;
                     }
                     session_config["audio"]["input"]["format"]["rate"] = input_audio.rate;

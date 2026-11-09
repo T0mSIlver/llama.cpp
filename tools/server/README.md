@@ -1596,7 +1596,7 @@ Models that write the text while they listen use this endpoint: Voxtral Realtime
 
 Live ASR models can also hold a conversation, so they transcribe live only in sessions opened with `/v1/realtime?intent=transcription`, as OpenAI transcription sessions are; other sessions are a [realtime conversation](#realtime-conversation).
 
-Audio must be PCM16 mono. Its sample rate is 24000 Hz, like OpenAI's `audio/pcm`, unless the client sets another one, from 8000 to 192000 Hz, in `audio.input.format.rate` of a `session.update` before the first audio. The server resamples the audio to the model sample rate. Each `input_audio_buffer.append` carries a base64-encoded chunk of PCM16 samples.
+Audio must be PCM16 mono at 24000 Hz, like OpenAI's `audio/pcm`. A `session.update` before the first audio can set another rate in `audio.input.format.rate`, from 8000 to 192000 Hz. The server resamples the audio to the model sample rate. Each `input_audio_buffer.append` carries a base64-encoded chunk of PCM16 samples.
 
 *Client events:*
 

@@ -684,7 +684,7 @@ MAKE_TEST(test_helper_resampler_chunks) {
         const std::vector<float> expected(out, out + n_out);
 
         std::vector<float> actual;
-        for (size_t i = 0, n = 1; i < in.size(); i += n, n = n % 97 + 1) {
+        for (size_t i = 0, n = 1; i < in.size(); i += n, n = n % 97 + 1) { // chunk sizes 1..97
             out = mtmd_helper_resampler_process(parts.get(), in.data() + i, std::min(n, in.size() - i), &n_out);
             actual.insert(actual.end(), out, out + n_out);
         }

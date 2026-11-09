@@ -899,11 +899,12 @@ struct realtime_conversation {
 } // namespace
 
 bool server_realtime_audio_in::update(const json & session, std::string & err) {
-    const json rates = json_get_nested_values({"audio/input/format/rate"}, session);
-    if (rates.empty()) {
+    const char * path  = "audio/input/format/rate";
+    const json   rates = json_get_nested_values({path}, session);
+    if (!rates.contains(path)) {
         return true;
     }
-    const json & value = rates.begin().value();
+    const json & value = rates.at(path);
     const int64_t new_rate = value.is_number_integer() ? value.get<int64_t>() : 0;
     if (new_rate < 8000 || new_rate > 192000) {
         err = "audio.input.format.rate must be an integer between 8000 and 192000";

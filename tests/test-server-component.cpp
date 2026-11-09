@@ -253,7 +253,7 @@ static void test_json_helpers(testing & t) {
 }
 
 static void test_realtime_audio_in(testing & t) {
-    auto rate_update = [](int64_t rate) {
+    auto rate_update = [](const json & rate) {
         return json {{"audio", {{"input", {{"format", {{"type", "audio/pcm"}, {"rate", rate}}}}}}}};
     };
     const std::string pcm(2 * 2400, '\0'); // 2400 PCM16 samples
@@ -272,12 +272,8 @@ static void test_realtime_audio_in(testing & t) {
         std::string err;
         t.assert_true("too low",   !in.update(rate_update(7999), err));
         t.assert_true("too high",  !in.update(rate_update(192001), err));
-        json str = rate_update(0);
-        str["audio"]["input"]["format"]["rate"] = "16000";
-        t.assert_true("string",    !in.update(str, err));
-        json real = rate_update(0);
-        real["audio"]["input"]["format"]["rate"] = 16000.5;
-        t.assert_true("not integer", !in.update(real, err));
+        t.assert_true("string",    !in.update(rate_update("16000"), err));
+        t.assert_true("not integer", !in.update(rate_update(16000.5), err));
         t.assert_equal("unchanged", 24000, in.rate);
     });
 
@@ -290,6 +286,13 @@ static void test_realtime_audio_in(testing & t) {
         t.assert_true("same rate", in.update(rate_update(16000), err));
         t.assert_true("new rate", !in.update(rate_update(48000), err));
         t.assert_equal("unchanged", 16000, in.rate);
+    });
+
+    t.test("explicit rate is resampled", [&](testing & t) {
+        server_realtime_audio_in in(16000);
+        std::string err;
+        t.assert_true("set 48 kHz", in.update(rate_update(48000), err));
+        t.assert_equal("resampled", (size_t) 800, in.decode(pcm).size());
     });
 }
 
