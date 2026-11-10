@@ -84,3 +84,22 @@ def test_realtime_context_full():
     ws = WebSocket(server.server_host, server.server_port, "/v1/realtime")
     ws.recv_until("session.created")
     ws.close()
+
+
+def test_realtime_error_code():
+    global server
+    server.start()
+    ws = WebSocket(server.server_host, server.server_port, "/v1/realtime")
+    ws.recv_until("session.created")
+
+    # clients match on error.code, error.type is the class of the error
+    ws.send({"type": "input_audio_buffer.commit"})
+    error = ws.recv_until("error")[-1]["error"]
+    assert error["type"] == "invalid_request_error"
+    assert error["code"] == "input_audio_buffer_commit_empty"
+
+    ws.send({"type": "response.create"})
+    error = ws.recv_until("error")[-1]["error"]
+    assert error["type"] == "invalid_request_error"
+    assert error["code"] == "conversation_empty"
+    ws.close()

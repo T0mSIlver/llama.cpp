@@ -1646,7 +1646,7 @@ LFM3-Omni is not trained to reason, run it with `--reasoning off` so that its tu
 - `response.created`, `response.output_item.added`, `response.content_part.added`, then `response.output_text.delta` and `response.output_audio.delta` (base64 PCM16) as they are generated, then the `.done` events and `response.done`
 - `response.output_item.added` with a `function_call` item, `response.function_call_arguments.delta` and `.done`: a tool call of the response, its arguments are a JSON string
 - `conversation.item.input_audio_transcription.delta` and `.completed`: in a transcription session
-- `error`: `error.message` describes the problem
+- `error`: `error.message` describes the problem, `error.code` names it for `input_audio_buffer_commit_empty` and `conversation_empty`
 
 Tools go into the system prompt with the chat template, and the tool calls are parsed as in `/v1/chat/completions`. The client runs the calls of a response, sends their results as `function_call_output` items, then asks for the next response.
 

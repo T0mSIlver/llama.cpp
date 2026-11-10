@@ -187,10 +187,11 @@ struct realtime_conversation {
         conn.send(safe_json_to_str(ev));
     }
 
-    void send_error(const std::string & message, const std::string & type_err = "invalid_request_error") {
+    // code: the OpenAI error code clients match on, e.g. "input_audio_buffer_commit_empty"
+    void send_error(const std::string & message, const std::string & type_err = "invalid_request_error", const std::string & code = "") {
         send_event({
             {"type",  "error"},
-            {"error", {{"type", type_err}, {"code", nullptr}, {"message", message}, {"param", nullptr}}},
+            {"error", {{"type", type_err}, {"code", code.empty() ? json(nullptr) : json(code)}, {"message", message}, {"param", nullptr}}},
         });
     }
 
@@ -397,7 +398,7 @@ struct realtime_conversation {
     // ends the audio of the open turn, it becomes a user item
     bool commit() {
         if (!has_audio) {
-            send_error("input_audio_buffer.commit: the buffer is empty", "input_audio_buffer_commit_empty");
+            send_error("input_audio_buffer.commit: the buffer is empty", "invalid_request_error", "input_audio_buffer_commit_empty");
             return false;
         }
         if (!control(SERVER_CONTROL_ACTION_AUDIO_END)) {
@@ -501,7 +502,7 @@ struct realtime_conversation {
             return;
         }
         if (!turn_open && !tool_results) {
-            send_error("response.create: commit audio or create a message first", "conversation_empty");
+            send_error("response.create: commit audio or create a message first", "invalid_request_error", "conversation_empty");
             return;
         }
         mtmd_helper_gen_audio_out_mode mode = out_mode;
