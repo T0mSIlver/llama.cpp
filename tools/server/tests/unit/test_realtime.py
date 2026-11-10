@@ -141,3 +141,38 @@ def test_realtime_response_create_while_responding():
     assert second != first
     assert events[-1]["response"]["id"] == second
     ws.close()
+
+
+def test_realtime_clear_transcription():
+    global server
+    server.start()
+    ws = WebSocket(server.server_host, server.server_port, "/v1/realtime")
+    ws.recv_until("session.created")
+    # 24 kHz goes through the resampler
+    ws.send({"type": "session.update", "session": {"type": "transcription", "audio": {"input": {"format": {"type": "audio/pcm", "rate": 24000}}}}})
+    ws.recv_until("session.updated")
+    second = {"type": "input_audio_buffer.append", "audio": base64.b64encode(bytes(24000 * 2)).decode()} # 1 s of silence
+
+    def append_10s():
+        for _ in range(10):
+            ws.send(second)
+
+    # nothing left to commit after a clear
+    append_10s()
+    ws.send({"type": "input_audio_buffer.clear"})
+    ws.recv_until("input_audio_buffer.cleared")
+    ws.send({"type": "input_audio_buffer.commit"})
+    ev = ws.recv()
+    assert ev["type"] == "error"
+    assert ev["error"]["code"] == "input_audio_buffer_commit_empty"
+
+    # if the cleared audio stayed in the slot, 100 s of it would not fit in the context
+    for _ in range(10):
+        append_10s()
+        ws.send({"type": "input_audio_buffer.clear"})
+        assert not any(e["type"] == "error" for e in ws.recv_until("input_audio_buffer.cleared"))
+    append_10s()
+    ws.send({"type": "input_audio_buffer.commit"})
+    events = ws.recv_until("conversation.item.input_audio_transcription.completed")
+    assert not any(e["type"] == "error" for e in events)
+    ws.close()

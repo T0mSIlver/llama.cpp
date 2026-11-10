@@ -440,6 +440,21 @@ struct realtime_conversation {
         n_turns   = 0;
     }
 
+    // transcription: the slot only holds the audio not committed yet, it can be dropped
+    // realtime: the audio already went into the conversation
+    void on_clear() {
+        if (type == "transcription") {
+            if (turn_open && !control(SERVER_CONTROL_ACTION_CLEAR)) {
+                return;
+            }
+            has_audio = false;
+            turn_open = false;
+            n_turns   = 0;
+            resampler.reset(); // it holds the last samples of the cleared audio
+        }
+        send_event({{"type", "input_audio_buffer.cleared"}});
+    }
+
     void on_item_create(const json & ev) {
         if (type == "transcription") {
             send_error("conversation.item.create: not supported in a transcription session");
@@ -709,8 +724,7 @@ struct realtime_conversation {
         } else if (t == "input_audio_buffer.commit") {
             on_commit();
         } else if (t == "input_audio_buffer.clear") {
-            // the audio already went into the conversation
-            send_event({{"type", "input_audio_buffer.cleared"}});
+            on_clear();
         } else if (t == "conversation.item.create") {
             on_item_create(ev);
         } else if (t == "response.create") {

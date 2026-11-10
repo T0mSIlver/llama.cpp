@@ -1631,6 +1631,7 @@ Models that answer after the audio, like LFM3-Audio and LFM3-Omni, hold a conver
 - `session.update`: `type`, `audio.input.format.rate` (8000 to 192000 Hz), `instructions` (the system prompt, before the first audio or message), `output_modalities`, `max_output_tokens` (an integer or `"inf"`, the default), `tools` (functions with `name`, `description` and `parameters`, before the first audio or message) and `tool_choice` (`"auto"`, the default, `"none"` or `"required"`)
 - `input_audio_buffer.append`: `audio` holds base64 PCM16 samples
 - `input_audio_buffer.commit`: ends the audio of the user turn, in a transcription session the transcript follows
+- `input_audio_buffer.clear`: in a transcription session, drops the audio since the last commit; in a realtime session the audio is already in the conversation and stays
 - `conversation.item.create`: a user message with `input_text` content, or a `function_call_output` with the `call_id` and `output` of a tool call of the last response
 - `response.create`: ends the user turn and generates the response, `response.output_modalities`, `response.max_output_tokens` and `response.tool_choice` override the session. While a response is in progress it gets the error `conversation_already_has_active_response`
 - `response.cancel`: stops the response being generated
