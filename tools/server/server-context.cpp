@@ -3692,7 +3692,8 @@ private:
                 return;
             }
             if (!slot.rt->update()) {
-                send_error(slot, slot.rt->error, slot.rt->error_type);
+                // a realtime task has no prompt: report the size the conversation needed
+                send_error(slot.task->id, slot.rt->error, slot.rt->error_type, slot.rt->error_n_tokens, slot.n_ctx);
                 slot.release();
                 return;
             }

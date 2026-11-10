@@ -982,6 +982,7 @@ bool server_realtime_slot::decode(const llama_token * tokens, const float * rows
     const int32_t n_embd  = llama_model_n_embd_inp(model);
     const int32_t n_batch = llama_n_batch(ctx);
     if (n_past + n >= n_ctx) {
+        error_n_tokens = n_past + n;
         return fail("the conversation does not fit in the context", ERROR_TYPE_EXCEED_CONTEXT_SIZE);
     }
     for (int32_t i0 = 0; i0 < n; i0 += n_batch) {
