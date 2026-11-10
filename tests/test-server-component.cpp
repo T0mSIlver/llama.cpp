@@ -758,6 +758,7 @@ static void test_pcm_s16_to_f32(testing & t) {
             split.insert(split.end(), part.begin(), part.end());
         }
         t.assert_true("chunks of " + std::to_string(step) + " bytes", split == whole);
+        t.assert_true("no byte left after " + std::to_string(step) + "-byte chunks", odd.empty());
     }
 }
 
