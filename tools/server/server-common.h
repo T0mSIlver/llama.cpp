@@ -117,6 +117,9 @@ const char * get_media_marker();
 // float samples to signed 16-bit PCM bytes, clamped to [-1, 1]
 std::string pcm_f32_to_s16(const float * samples, size_t n);
 
+// signed 16-bit PCM bytes to float samples, the last byte of an odd count is kept in odd for the next call
+std::vector<float> pcm_s16_to_f32(const std::string & bytes, std::string & odd);
+
 //
 // model output modalities
 //

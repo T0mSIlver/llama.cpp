@@ -6270,6 +6270,7 @@ void server_routes::init_routes() {
         std::thread reader([&]() {
             int                        input_rate = model_rate;
             mtmd_helper::resampler_ptr resampler; // input_rate -> model_rate
+            std::string                pcm_odd;   // the first byte of a sample split across two appends
             std::string msg;
             while (conn.read(msg) != 0) {
                 json ev;
@@ -6305,12 +6306,7 @@ void server_routes::init_routes() {
                         send_error_event("invalid base64 audio", "invalid_request_error");
                         continue;
                     }
-                    std::vector<float> samples(pcm.size() / 2);
-                    for (size_t i = 0; i < samples.size(); i++) {
-                        int16_t v;
-                        memcpy(&v, pcm.data() + 2 * i, sizeof(v));
-                        samples[i] = v / 32768.0f;
-                    }
+                    std::vector<float> samples = pcm_s16_to_f32(pcm, pcm_odd);
                     if (!resampler) {
                         resampler.reset(mtmd_helper_resampler_init(input_rate, model_rate));
                         if (!resampler) {

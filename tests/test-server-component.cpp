@@ -740,6 +740,27 @@ static void test_pcm_f32_to_s16(testing & t) {
     t.assert_true ("empty",          pcm_f32_to_s16(nullptr, 0).empty());
 }
 
+static void test_pcm_s16_to_f32(testing & t) {
+    const std::vector<float> samples = {0.0f, 0.5f, -0.5f, 0.25f, -1.0f};
+    const std::string bytes = pcm_f32_to_s16(samples.data(), samples.size());
+
+    std::string odd;
+    const std::vector<float> whole = pcm_s16_to_f32(bytes, odd);
+    t.assert_equal("size", samples.size(), whole.size());
+    t.assert_true ("no byte left", odd.empty());
+
+    // appends that split samples in two must give the same samples
+    for (size_t step = 1; step <= 3; step++) {
+        std::vector<float> split;
+        odd.clear();
+        for (size_t i = 0; i < bytes.size(); i += step) {
+            const std::vector<float> part = pcm_s16_to_f32(bytes.substr(i, step), odd);
+            split.insert(split.end(), part.begin(), part.end());
+        }
+        t.assert_true("chunks of " + std::to_string(step) + " bytes", split == whole);
+    }
+}
+
 int main(int argc, char ** argv) {
     testing t;
 
@@ -767,6 +788,7 @@ int main(int argc, char ** argv) {
     t.test("dry_sequence_breakers", test_dry_sequence_breakers);
     t.test("speech_convert",  test_speech_convert);
     t.test("pcm_f32_to_s16",  test_pcm_f32_to_s16);
+    t.test("pcm_s16_to_f32",  test_pcm_s16_to_f32);
 
     return t.summary();
 }
