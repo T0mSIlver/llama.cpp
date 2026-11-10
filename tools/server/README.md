@@ -1632,7 +1632,7 @@ Models that answer after the audio, like LFM3-Audio and LFM3-Omni, hold a conver
 - `input_audio_buffer.append`: `audio` holds base64 PCM16 samples
 - `input_audio_buffer.commit`: ends the audio of the user turn, in a transcription session the transcript follows
 - `conversation.item.create`: a user message with `input_text` content, or a `function_call_output` with the `call_id` and `output` of a tool call of the last response
-- `response.create`: ends the user turn and generates the response, `response.output_modalities`, `response.max_output_tokens` and `response.tool_choice` override the session
+- `response.create`: ends the user turn and generates the response, `response.output_modalities`, `response.max_output_tokens` and `response.tool_choice` override the session. While a response is in progress it gets the error `conversation_already_has_active_response`
 - `response.cancel`: stops the response being generated
 
 LFM3-Omni is not trained to reason, run it with `--reasoning off` so that its turns open with an empty think block.

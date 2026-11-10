@@ -164,6 +164,7 @@ struct realtime_conversation {
     std::string transcribe_item_id; // transcription: the item being transcribed
     std::string transcript;
     std::string response_id;
+    bool        response_active = false; // response_id is generating, until its response.done
     std::string response_item_id;
     std::string response_text;
     int         idx_text  = -1;
@@ -501,6 +502,14 @@ struct realtime_conversation {
             send_error("response.create: not supported in a transcription session");
             return;
         }
+        {
+            // the results of a response go to the current response_id, a second one would take over its events
+            std::lock_guard<std::mutex> lock(mutex);
+            if (response_active) {
+                send_error("response.create: response " + response_id + " is still in progress", "invalid_request_error", "conversation_already_has_active_response");
+                return;
+            }
+        }
         if (!turn_open && !tool_results) {
             send_error("response.create: commit audio or create a message first", "invalid_request_error", "conversation_empty");
             return;
@@ -567,6 +576,7 @@ struct realtime_conversation {
         {
             std::lock_guard<std::mutex> lock(mutex);
             response_id      = "resp_" + random_string();
+            response_active  = true;
             response_item_id = "item_" + random_string();
             response_text.clear();
             parts       = json::array();
@@ -583,6 +593,8 @@ struct realtime_conversation {
                         {"status", "in_progress"}, {"output_modalities", output_modalities_json(mode)}, {"output", json::array()}}}});
         }
         if (!control(SERVER_CONTROL_ACTION_RESPONSE_CREATE, prompt, {}, response)) {
+            std::lock_guard<std::mutex> lock(mutex);
+            response_active = false;
             return;
         }
         // the response ends the turn, its tokens are in the slot; the footer goes in before the next turn
@@ -849,6 +861,7 @@ struct realtime_conversation {
         send_event({{"type", "response.done"}, {"response", {{"id", response_id}, {"object", "realtime.response"}, {"status", status},
                     {"output", output}, {"usage", {{"output_tokens", res.n_decoded}}}}}});
         parse.reset();
+        response_active = false;
     }
 
     //

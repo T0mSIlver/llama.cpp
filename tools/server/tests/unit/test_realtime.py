@@ -103,3 +103,41 @@ def test_realtime_error_code():
     assert error["type"] == "invalid_request_error"
     assert error["code"] == "conversation_empty"
     ws.close()
+
+
+def user_text(text: str) -> dict:
+    return {"type": "conversation.item.create", "item": {"type": "message", "role": "user", "content": [{"type": "input_text", "text": text}]}}
+
+
+def test_realtime_response_create_while_responding():
+    global server
+    # the first response runs to its 256 tokens, so it is still in progress when the second response.create is read
+    server.ignore_eos = True
+    server.start()
+    ws = WebSocket(server.server_host, server.server_port, "/v1/realtime")
+    ws.recv_until("session.created")
+    ws.send({"type": "session.update", "session": {"type": "realtime", "output_modalities": ["text"]}})
+    ws.recv_until("session.updated")
+
+    # a second response.create while the first one is generating
+    ws.send(user_text("Count to one hundred."))
+    ws.send({"type": "response.create", "response": {"max_output_tokens": 256}})
+    ws.send(user_text("And now?"))
+    ws.send({"type": "response.create", "response": {"max_output_tokens": 8}})
+    events = ws.recv_until("response.done")
+    first = next(e for e in events if e["type"] == "response.created")["response"]["id"]
+    errors = [e for e in events if e["type"] == "error"]
+    assert len(errors) == 1
+    assert errors[0]["error"]["type"] == "invalid_request_error"
+    assert errors[0]["error"]["code"] == "conversation_already_has_active_response"
+    assert [e["response"]["id"] for e in events if e["type"] == "response.created"] == [first]
+    assert all(e["response_id"] == first for e in events if e["type"] == "response.output_text.delta")
+    assert events[-1]["response"]["id"] == first
+
+    # once it is done, the next response answers the second message
+    ws.send({"type": "response.create", "response": {"max_output_tokens": 8}})
+    events = ws.recv_until("response.done")
+    second = next(e for e in events if e["type"] == "response.created")["response"]["id"]
+    assert second != first
+    assert events[-1]["response"]["id"] == second
+    ws.close()
